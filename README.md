@@ -1,17 +1,21 @@
 这是一个简单的基于spring boot的一个秒杀系统后端测试台的项目以及测试
 项目环境以及对应的数据版本均在docker里的配置文件中.
+
  1. 环境准备
 在运行项目前，请确保本地已安装以下环境：
 - [JDK 21]
 - [Maven 3.9]
 - [Docker 4.78]
+
 2. 一键启动中间件 (Docker)
 项目根目录下提供了配置好的 Docker 环境。通过以下命令一键启动 MySQL、Redis 及 RocketMQ等
 
 进入 docker 目录
 cd docker
+
 后台启动所有依赖服务
 docker-compose up -d
+
 启动后，会在本地生成对应的挂载数据目录。
 
 3. 初始化数据库
