@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>⚡ 秒杀系统并发测试控制台</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background-color: #f7fafc; color: #2d3748; }
+            .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+            h1 { color: #3182ce; border-bottom: 2px solid #ebf8ff; padding-bottom: 15px; }
+            .form-group { margin-bottom: 15px; }
+            label { display: block; margin-bottom: 5px; font-weight: bold; }
+            input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; box-sizing: border-box; }
+            .btn-group { display: flex; gap: 15px; margin-top: 20px; }
+            button { flex: 1; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; color: white; transition: background 0.2s; }
+            .btn-single { background-color: #4a5568; }
+            .btn-single:hover { background-color: #2d3748; }
+            .btn-concurrent { background-color: #e53e3e; }
+            .btn-concurrent:hover { background-color: #c53030; }
+            .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; text-align: center; }
+            .stat-box { padding: 15px; border-radius: 5px; color: white; font-weight: bold; }
+            .stat-success { background-color: #48bb78; }
+            .stat-fail { background-color: #f56565; }
+            .stat-total { background-color: #4299e1; }
+            #log-area { background: #1a202c; color: #a0aec0; padding: 15px; border-radius: 5px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.6; }
+        </style>
+    </head>
+    <body>
+
+        <div class="card">
+            <h1>⚡ 秒杀系统并发后端测试台</h1>
+            <p style="color: #718096; font-size: 14px;">在启动本地数据库、Redis、RocketMQ 以及 Spring Boot 后，即可在此进行并发压力并发功能测试。</p>
+
+            <div class="form-group">
+                <label for="goodsId">秒杀商品 ID</label>
+                <input type="number" id="goodsId" value="1">
+            </div>
+            <div class="form-group">
+                <label for="concurrentNum">并发模拟人数 (多用户并发发起请求，自动分配不同 User-Id)</label>
+                <input type="number" id="concurrentNum" value="30">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-single" onclick="singleSeckill()">🙋 单用户抢购</button>
+                <button class="btn-concurrent" onclick="concurrentSeckill()">🔥 瞬间高并发抢购</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📊 本轮测试实时统计</h3>
+            <div class="stats-container">
+                <div class="stat-box stat-total">请求总数: <span id="total-count">0</span></div>
+                <div class="stat-box stat-success">抢购成功: <span id="success-count">0</span></div>
+                <div class="stat-box stat-fail">排队/失败: <span id="fail-count">0</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🖥️ 实时响应日志</h3>
+            <div id="log-area">等待发起测试...</div>
+        </div>
+
+        <script>
+            const logArea = document.getElementById('log-area');
+
+            function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let color = '#a0aec0';
+            if (type === 'success') color = '#48bb78';
+            if (type === 'warn') color = '#ed8936';
+            if (type === 'error') color = '#f56565';
+            logArea.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+            }
+
+            function updateStats(total, success, fail) {
+            document.getElementById('total-count').innerText = total;
+            document.getElementById('success-count').innerText = success;
+            document.getElementById('fail-count').innerText = fail;
+            }
+
+            // 单个用户测试
+            function singleSeckill() {
+            const goodsId = document.getElementById('goodsId').value;
+            const randomUserId = Math.floor(Math.random() * 899999) + 100000; // 模拟随机用户ID
+            log(`单用户 ID: ${randomUserId} 正在发起对商品ID: ${goodsId} 的抢购...`);
+
+            fetch(`/seckill/order?goodsId=${goodsId}`, {
+            method: 'POST',
+            headers: { 'User-Id': randomUserId }
+            })
+            .then(async res => {
+            const text = await res.text();
+            if (res.ok && text.includes('抢购成功')) {
+            log(`用户 ${randomUserId} 抢购成功！后端返回: ${text}`, 'success');
+            updateStats(1, 1, 0);
+            } else {
+            log(`用户 ${randomUserId} 抢购未成功。后端返回: ${text}`, 'warn');
+            updateStats(1, 0, 1);
+            }
+            })
+            .catch(err => {
+            log(`网络请求异常: ${err}`, 'error');
+            });
+            }
+
+            // 并发压测模拟
+            async function concurrentSeckill() {
+            const goodsId = document.getElementById('goodsId').value;
+            const concurrentNum = parseInt(document.getElementById('concurrentNum').value) || 20;
+
+            logArea.innerHTML = '';
+            log(`开始模拟 ${concurrentNum} 个不同用户同时发起抢购！`, 'error');
+
+            let total = 0;
+            let success = 0;
+            let fail = 0;
+            updateStats(0, 0, 0);
+
+            // 构造并发请求数组 (模拟不同 User-Id)
+            const promises = Array.from({ length: concurrentNum }).map((_, index) => {
+            const userId = 20000 + index; // 生成 20000, 20001 ... 的并发用户 ID
+
+            return fetch(`/seckill/order?goodsId=${goodsId}`, {
+            method: 'POST',
+            headers: { 'User-Id': userId }
+            })
+            .then(async res => {
+            const text = await res.text();
+            total++;
+            if (res.ok && text.includes('抢购成功')) {
+            success++;
+            log(`[并发用户 ${userId}] 成功: ${text}`, 'success');
+            } else {
+            fail++;
+            log(`[并发用户 ${userId}] 失败/排队: ${text}`, 'warn');
+            }
+            updateStats(total, success, fail);
+            })
+            .catch(err => {
+            total++;
+            fail++;
+            log(`[并发用户 ${userId}] 异常: ${err.message}`, 'error');
+            updateStats(total, success, fail);
+            });
+            });
+
+            // 瞬间打出所有请求
+            await Promise.all(promises);
+            log(`并发测试结束！总请求：${total}次，成功抢到：${success}件，库存扣减完毕/限流拦截：${fail}次。`);
+            }
+        </script>
+    </body>
+</html>

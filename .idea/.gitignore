@@ -1,0 +1,14 @@
+
+**/docker/mysql/data/
+docker/mysql/data/
+docker/mysql/data/**
+
+
+*.sock
+**/*.sock
+
+
+target/
+.idea/
+*.iml
+.mvn/

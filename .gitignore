@@ -1,0 +1,6 @@
+docker/mysql/
+docker/redis/
+docker/rmq/store/
+docker/rmq/logs/
+**/data/
+*.sock

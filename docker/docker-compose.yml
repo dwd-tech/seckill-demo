@@ -1,0 +1,38 @@
+services:
+  seckill-mysql:
+    image: mysql:8.0
+    container_name: seckill-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: seckill_db
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+
+  seckill-redis:
+    image: redis:6.2
+    container_name: seckill-redis
+    ports:
+      - "6379:6379"
+
+  rmqnamesrv:
+    image: apache/rocketmq:4.9.4
+    container_name: rmqnamesrv
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+
+  rmqbroker:
+    image: apache/rocketmq:4.9.4
+    container_name: rmqbroker
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+    environment:
+      - NAMESRV_ADDR=rmqnamesrv:9876
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    command: sh mqbroker -c /home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    depends_on:
+      - rmqnamesrv
