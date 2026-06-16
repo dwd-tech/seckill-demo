@@ -1,4 +1,4 @@
-这是一个简单的基于spring boot的一个秒杀系统的项目以及测试
+这是一个简单的基于spring boot的一个秒杀系统后端测试台的项目以及测试
 项目环境以及对应的数据版本均在docker里的配置文件中.
  1. 环境准备
 在运行项目前，请确保本地已安装以下环境：
@@ -23,3 +23,6 @@ docker-compose up -d
 4.运行
 在IDEA中运行SeckillApplication.java运行成功通过浏览器进入  http://localhost:8080/  后可以看到以下的测试界面
 <img width="1815" height="1242" alt="QQ_1781597722257" src="https://github.com/user-attachments/assets/2ab57be4-b093-4ae6-8f7e-938fd78d4364" />
+
+
+5.后续考虑优化改进项目将客户端的界面和功能完善形成一个完整的前后端项目,包括用户的信息以及商家界面,目前还在学习阶段,只写了后端部分的内容.
